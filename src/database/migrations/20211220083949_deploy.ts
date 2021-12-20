@@ -1,6 +1,5 @@
 import knex, { Knex } from "knex";
 
-
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('deploy', (table: Knex.TableBuilder) => {
     table.increments('id');
@@ -10,8 +9,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTable('deploy_steps');
-  await knex.schema.dropTable('deploy_builds');
   await knex.schema.dropTable('deploy');
 }
 
