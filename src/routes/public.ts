@@ -12,6 +12,7 @@ routes.get('/deploy/:id', deployControllers.show);
 routes.post('/deploy', deployControllers.create);
 routes.put('/deploy/:id', deployControllers.update);
 routes.delete('/deploy/:id', deployControllers.delete);
+routes.post('/deploy/github-webhook/:id', deployControllers.buildByGitHubWebHook);
 
 routes.get('/deploy/step/types', stepControllers.getStepTypes);
 

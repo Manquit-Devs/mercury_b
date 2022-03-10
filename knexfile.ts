@@ -13,7 +13,11 @@ module.exports = {
     },
     seeds: {
       directory: "./src/database/seeds",
-    }
+    },
+    pool: {
+      min: 2,
+      max: 10
+    },
   },
 
   staging: {

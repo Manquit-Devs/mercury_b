@@ -6,8 +6,7 @@ import db, {
   DeployStep,
   StepCommand,
 } from '../database/';
-import { exec } from 'child_process';
-import { sortStepByOrder } from '../utils/deploy';
+import { runSteps } from '../module/deploy';
 
 interface DeployGetBody {
   id: number;
@@ -47,16 +46,16 @@ export default class DeployController {
       const deploys = await db<Deploy>('deploy').select();
 
       for (const deploy of deploys as Array<DeployGetBody>) {
-        const deployBuilds = await db<DeployBuild>('deploy_builds')
+        const deployBuilds = await db<DeployBuild>('deploy_build')
           .join<BuildStatus>(
             'build_status',
             'build_status.id',
-            'deploy_builds.statusId'
+            'deploy_build.statusId'
           )
           .select()
           .where('deployId', deploy.id);
         deploy.builds = deployBuilds;
-        const deploySteps = await db<DeployStep>('deploy_steps')
+        const deploySteps = await db<DeployStep>('deploy_step')
           .select()
           .where('deployId', deploy.id);
 
@@ -92,16 +91,16 @@ export default class DeployController {
       const deploy = (await db<Deploy>('deploy').select().where('id', id))[0];
 
       response = { ...response, ...deploy };
-      const deployBuilds = await db<DeployBuild>('deploy_builds')
+      const deployBuilds = await db<DeployBuild>('deploy_build')
         .join<BuildStatus>(
           'build_status',
           'build_status.id',
-          'deploy_builds.statusId'
+          'deploy_build.statusId'
         )
         .select()
         .where('deployId', deploy.id);
       response.builds = deployBuilds;
-      const deploySteps = await db<DeployStep>('deploy_steps')
+      const deploySteps = await db<DeployStep>('deploy_step')
         .select()
         .where('deployId', deploy.id);
 
@@ -141,7 +140,7 @@ export default class DeployController {
       });
 
       for (const step of steps) {
-        const [stepId] = await trx<DeployStep>('deploy_steps').insert({
+        const [stepId] = await trx<DeployStep>('deploy_step').insert({
           name: step.name,
           order: step.order,
           typeId: step.typeId,
@@ -187,8 +186,8 @@ export default class DeployController {
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
     try {
-      await trx<DeployBuild>('deploy_builds').delete().where('deployId', id);
-      await trx<DeployStep>('deploy_steps').delete().where('deployId', id);
+      await trx<DeployBuild>('deploy_build').delete().where('deployId', id);
+      await trx<DeployStep>('deploy_step').delete().where('deployId', id);
       await trx<Deploy>('deploy').delete().where('id', id);
       await trx.commit();
       res.status(200).send();
@@ -198,24 +197,32 @@ export default class DeployController {
     }
   }
 
-  async runSteps(deployId: number) {
+  async buildByGitHubWebHook(req: Request, res: Response) {
+    res.status(200).send();
+    const trxProvider = await db.transactionProvider();
+    const trx = await trxProvider();
+    const { id } = req.params;
+    const { commits } = req.body;
+    const build: DeployBuild = {
+      commit: commits[0].sha,
+      sender: commits[0].author.name,
+      date: new Date(),
+      deployId: Number(id),
+      statusId: 2,
+    };
     try {
-      const deploy = await db<Deploy>('deploy').where('id', deployId);
-      const steps = await db<DeployStep>('deploy_steps').where(
-        'deployId',
-        deployId
-      );
-      const stepsOrdered = steps.sort(sortStepByOrder);
-      for (const step of stepsOrdered){
-        exec(`cd ${deploy[0].workingDirectory}/ && pwd`, (error, stdout, stderr) => {
-          console.log(stdout);
-          console.log(stderr);
-          if (error !== null) {
-            console.log(`exec error: ${error}`);
-          }
-        });
+      const [buildId] = await trx('deploy_build').insert(build);
+      try {
+        runSteps(Number(id));
+        await trx('deploy_build').update({ statusId: 3 }).where('id', buildId);
+      } catch (error) {
+        await trx('deploy_build').update({ statusId: 4 }).where('id', buildId);
+        console.log(error);
+      } finally {
+        await trx.commit();
       }
     } catch (error) {
+      await trx.rollback();
       console.log(error);
     }
   }

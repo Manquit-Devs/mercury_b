@@ -8,7 +8,7 @@ const db = knex({
 });
 
 export interface Deploy {
-  id: number;
+  id?: number;
   name: string;
   description: string;
   branch: string;
@@ -16,7 +16,7 @@ export interface Deploy {
 }
 
 export interface DeployStep {
-  id: number;
+  id?: number;
   order: number;
   name: string;
   typeId: number;
@@ -24,7 +24,7 @@ export interface DeployStep {
 }
 
 export interface DeployBuild {
-  id: number;
+  id?: number;
   commit: string;
   sender: string;
   date: Date;
@@ -33,17 +33,17 @@ export interface DeployBuild {
 }
 
 export interface BuildStatus{
-  id: number;
+  id?: number;
   name: string;
 }
 
 export interface StepType{
-  id: number;
+  id?: number;
   name: string;
 }
 
 export interface StepCommand{
-  id: number;
+  id?: number;
   command: string;
   stepId: number;
 }
