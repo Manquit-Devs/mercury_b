@@ -6,13 +6,16 @@ import db, {
   DeployStep,
   StepCommand,
 } from '../database/';
+import { exec } from 'child_process';
+import { sortStepByOrder } from '../utils/deploy';
 
 interface DeployGetBody {
   id: number;
   name: string;
   description: string;
+  workingDirectory: string;
   steps: Array<DeployStepBody>;
-  builds: Array<DeployBuild>;
+  builds: Array<DeployBuild & BuildStatus>;
 }
 
 interface DeployStepBody {
@@ -26,12 +29,15 @@ interface DeployStepBody {
 interface DeployCreateBody {
   name: string;
   description: string;
+  workingDirectory: string;
+  branch: string;
   steps: Array<DeployStepBody>;
 }
 
 interface DeployUpdateBody {
   name: string;
   description: string;
+  workingDirectory: string;
 }
 
 export default class DeployController {
@@ -54,7 +60,7 @@ export default class DeployController {
           .select()
           .where('deployId', deploy.id);
 
-        for (const step of deploySteps as unknown as Array<DeployStepBody>) {
+        for (const step of deploySteps as Array<DeployStepBody>) {
           switch (step.typeId) {
             case 1:
               const stepCommand = await db<StepCommand>('step_command')
@@ -121,14 +127,17 @@ export default class DeployController {
   }
 
   async create(req: Request, res: Response) {
-    const { name, description, steps } = req.body as DeployCreateBody;
+    const { name, description, workingDirectory, branch, steps } =
+      req.body as DeployCreateBody;
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
 
     try {
       const [deployId] = await trx('deploy').insert({
         name,
+        branch,
         description,
+        workingDirectory,
       });
 
       for (const step of steps) {
@@ -160,10 +169,12 @@ export default class DeployController {
   }
 
   async update(req: Request, res: Response) {
-    const { name, description } = <DeployUpdateBody>req.body;
+    const { name, description, workingDirectory } = <DeployUpdateBody>req.body;
     const { id } = req.params;
     try {
-      await db<Deploy>('deploy').update({ name, description }).where('id', id);
+      await db<Deploy>('deploy')
+        .update({ name, description, workingDirectory })
+        .where('id', id);
       return res.status(200).send();
     } catch (error) {
       console.log(error);
@@ -184,6 +195,28 @@ export default class DeployController {
     } catch (error) {
       console.log(error);
       res.status(500).send();
+    }
+  }
+
+  async runSteps(deployId: number) {
+    try {
+      const deploy = await db<Deploy>('deploy').where('id', deployId);
+      const steps = await db<DeployStep>('deploy_steps').where(
+        'deployId',
+        deployId
+      );
+      const stepsOrdered = steps.sort(sortStepByOrder);
+      for (const step of stepsOrdered){
+        exec(`cd ${deploy[0].workingDirectory}/ && pwd`, (error, stdout, stderr) => {
+          console.log(stdout);
+          console.log(stderr);
+          if (error !== null) {
+            console.log(`exec error: ${error}`);
+          }
+        });
+      }
+    } catch (error) {
+      console.log(error);
     }
   }
 }

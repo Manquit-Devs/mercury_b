@@ -11,6 +11,8 @@ export interface Deploy {
   id: number;
   name: string;
   description: string;
+  branch: string;
+  workingDirectory: string;
 }
 
 export interface DeployStep {
