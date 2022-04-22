@@ -48,4 +48,10 @@ export interface StepCommand{
   stepId: number;
 }
 
+export interface Admin{
+  id?: number;
+  username: string;
+  password: string;
+}
+
 export default db;

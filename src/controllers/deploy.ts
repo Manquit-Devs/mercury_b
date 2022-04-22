@@ -204,7 +204,7 @@ export default class DeployController {
     const { id } = req.params;
     const { commits } = req.body;
     const build: DeployBuild = {
-      commit: commits[0].sha,
+      commit: commits[0].id,
       sender: commits[0].author.name,
       date: new Date(),
       deployId: Number(id),
