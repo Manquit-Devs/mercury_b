@@ -11,11 +11,10 @@ const authenticateUser = (
   if (authHeader) {
     const token = authHeader.split(' ')[1];
 
-    jwt.verify(token, process.env.JWT_SECRET as string, (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET as string, (err, payload) => {
       if (err) {
         return res.status(403).send();
       }
-      req.body.user = user;
       next();
     });
   } else {
@@ -23,4 +22,4 @@ const authenticateUser = (
   }
 };
 
-export default authenticateUser
+export default authenticateUser;

@@ -18,6 +18,7 @@ module.exports = {
       min: 2,
       max: 10
     },
+    useNullAsDefault: true,
   },
 
   staging: {
@@ -35,7 +36,8 @@ module.exports = {
     },
     seeds: {
       directory: "./src/database/seeds",
-    }
+    },
+    useNullAsDefault: true,
   },
 
   production: {
@@ -53,6 +55,7 @@ module.exports = {
     },
     seeds: {
       directory: "./src/database/seeds",
-    }
+    },
+    useNullAsDefault: true,
   }
 };

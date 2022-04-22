@@ -160,9 +160,10 @@ export default class DeployController {
       }
 
       await trx.commit();
-      return res.status(201).send();
+      return res.status(201).send({ deployId });
     } catch (error) {
       console.log(error);
+      trx.rollback();
       return res.status(500).send();
     }
   }
@@ -186,7 +187,11 @@ export default class DeployController {
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
     try {
+      const steps = trx<DeployStep>('deploy_step')
+        .select('id')
+        .where('deployId', id);
       await trx<DeployBuild>('deploy_build').delete().where('deployId', id);
+      await trx<StepCommand>('step_command').delete().whereIn('stepId', steps);
       await trx<DeployStep>('deploy_step').delete().where('deployId', id);
       await trx<Deploy>('deploy').delete().where('id', id);
       await trx.commit();
