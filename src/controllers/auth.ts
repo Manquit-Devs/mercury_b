@@ -26,4 +26,8 @@ export default class AuthController {
       return res.status(500).send();
     }
   }
+
+  async verifyToken(req: Request, res: Response){
+    return res.status(200).send();
+  }
 }
