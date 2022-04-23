@@ -13,6 +13,7 @@ restrictedRoutes.get('/deploy/:id', deployController.show);
 restrictedRoutes.post('/deploy', deployController.create);
 restrictedRoutes.put('/deploy/:id', deployController.update);
 restrictedRoutes.delete('/deploy/:id', deployController.delete);
+restrictedRoutes.post('/deploy/build/run/:id', deployController.runBuildById);
 
 restrictedRoutes.get('/deploy/step/types', stepController.getStepTypes);
 

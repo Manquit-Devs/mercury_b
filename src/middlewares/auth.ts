@@ -15,6 +15,7 @@ const authenticateUser = (
       if (err) {
         return res.status(403).send();
       }
+      req.body.jwtPayload = payload;
       next();
     });
   } else {

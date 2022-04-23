@@ -25,6 +25,6 @@ export default class AuthController {
   }
 
   async verifyToken(req: Request, res: Response) {
-    return res.status(200).send({ username: req.body.username });
+    return res.status(200).send({ username: req.body.jwtPayload.username });
   }
 }

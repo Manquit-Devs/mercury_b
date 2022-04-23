@@ -6,7 +6,7 @@ import db, {
   DeployStep,
   StepCommand,
 } from '../database/';
-import { runSteps } from '../module/deploy';
+import { runBuildLastCommit, runSteps } from '../module/deploy';
 
 interface DeployGetBody {
   id: number;
@@ -202,8 +202,20 @@ export default class DeployController {
     }
   }
 
-  async buildByGitHubWebHook(req: Request, res: Response) {
-    res.status(200).send();
+  async runBuildById(req: Request, res: Response){
+    const { id } = req.params;
+    const username = req.body.jwtPayload.username;
+    try {
+      await runBuildLastCommit(Number(id), username);
+      return res.status(202).send();
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send();
+    }
+  }
+
+  async runBuildByGitHubWebHook(req: Request, res: Response) {
+    res.status(202).send();
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
     try {
@@ -226,8 +238,6 @@ export default class DeployController {
         runSteps(Number(id), buildId);
       }
     } catch (error) {
-      console.log(error);
-
       await trx.rollback();
     }
   }
