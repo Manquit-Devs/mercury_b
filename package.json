@@ -5,7 +5,9 @@
   "repository": "git@github.com:guilhermeg2k/mercury_b.git",
   "license": "MIT",
   "scripts": {
-    "start": "tsnd --transpile-only --ignore-watch node_modules --respawn src/server.ts"
+    "build": "tsc && knex migrate:latest && knex seed:run",
+    "start": "node ./build/src/server.js",
+    "dev": "tsnd --transpile-only --ignore-watch node_modules --respawn src/server.ts"
   },
   "devDependencies": {
     "@types/cors": "^2.8.10",
