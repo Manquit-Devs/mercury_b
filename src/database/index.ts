@@ -12,6 +12,7 @@ export interface Deploy {
   name: string;
   description: string;
   branch: string;
+  secret: string;
   workingDirectory: string;
 }
 

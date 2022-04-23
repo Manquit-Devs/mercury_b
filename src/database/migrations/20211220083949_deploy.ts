@@ -7,6 +7,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string('workingDirectory').notNullable();
     table.string('description');
     table.string('branch').notNullable();
+    table.string('secret').notNullable();
   });
 }
 

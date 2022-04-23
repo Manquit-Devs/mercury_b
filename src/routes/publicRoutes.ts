@@ -5,7 +5,7 @@ const publicRoutes = express.Router();
 const deployController = new DeployController();
 
 publicRoutes.post(
-  '/deploy/build/run/github-webhook/:id',
+  '/deploy/build/run/github-webhook/:id/:secret',
   deployController.runBuildByGitHubWebHook
 );
 

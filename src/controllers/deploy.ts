@@ -7,12 +7,14 @@ import db, {
   StepCommand,
 } from '../database/';
 import { runBuildLastCommit, runSteps } from '../module/deploy';
+import { v4 as uuidv4 } from 'uuid';
 
 interface DeployGetBody {
   id: number;
   name: string;
   description: string;
   workingDirectory: string;
+  secret: string;
   steps: Array<DeployStepBody>;
   builds: Array<DeployBuild & BuildStatus>;
 }
@@ -132,11 +134,13 @@ export default class DeployController {
     const trx = await trxProvider();
 
     try {
+      const uuid = uuidv4();
       const [deployId] = await trx('deploy').insert({
         name,
         branch,
         description,
         workingDirectory,
+        secret: uuid,
       });
 
       for (const step of steps) {
@@ -195,14 +199,15 @@ export default class DeployController {
       await trx<DeployStep>('deploy_step').delete().where('deployId', id);
       await trx<Deploy>('deploy').delete().where('id', id);
       await trx.commit();
-      res.status(200).send();
+      return res.status(200).send();
     } catch (error) {
       console.log(error);
-      res.status(500).send();
+      await trx.rollback();
+      return res.status(500).send();
     }
   }
 
-  async runBuildById(req: Request, res: Response){
+  async runBuildById(req: Request, res: Response) {
     const { id } = req.params;
     const username = req.body.jwtPayload.username;
     try {
@@ -219,13 +224,15 @@ export default class DeployController {
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
     try {
-      const { id } = req.params;
+      const { id, secret } = req.params;
       const { commits, sender, ref } = req.body;
 
       const branchRef = ref.split('/')[2];
 
-      const deploy = (await trx<Deploy>('deploy').select().where('id', id))[0];
-      if (deploy.branch === branchRef) {
+      const deploy = await trx<Deploy>('deploy').first().where('id', id);
+      console.log(deploy, secret);
+      if (deploy?.branch === branchRef && deploy?.secret === secret) {
+        console.log('running');
         const build: DeployBuild = {
           commit: commits[0].id,
           sender: sender.login,
@@ -237,6 +244,7 @@ export default class DeployController {
         await trx.commit();
         runSteps(Number(id), buildId);
       }
+      await trx.commit();
     } catch (error) {
       await trx.rollback();
     }
