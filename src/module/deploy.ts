@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import fs from 'fs';
 import db, { Deploy, DeployBuild, DeployStep, StepCommand } from '../database';
 import { sortStepByOrder } from '../utils/deploy';
 
@@ -10,8 +11,8 @@ const onStepFinishHandler = async (
 ) => {
   const trxProvider = await db.transactionProvider();
   const trx = await trxProvider();
-  console.log(stdout);
-  console.log(stderr);
+  console.log('stderr', stderr);
+  console.log('stdout', stdout);
   try {
     if (error) {
       await trx('deploy_build').update({ statusId: 4 }).where('id', buildId);
@@ -25,20 +26,27 @@ const onStepFinishHandler = async (
 };
 
 export const runSteps = async (deployId: number, buildId: number) => {
-  const deploy = await db<Deploy>('deploy').where('id', deployId);
+  const deploy = await db<Deploy>('deploy').first().where('id', deployId);
   const steps = await db<DeployStep>('deploy_step').where('deployId', deployId);
   const stepsOrdered = steps.sort(sortStepByOrder);
-  for (const step of stepsOrdered) {
-    const stepCommand = (
-      await db<StepCommand>('step_command').where('stepId', step.id)
-    )[0];
 
-    exec(
-      `cd ${deploy[0].workingDirectory} && ${stepCommand.command}`,
-      (error, stdout, stderr) =>
-        onStepFinishHandler(error, stdout, stderr, buildId)
-    );
+  let scriptFileData = '';
+  for (const step of stepsOrdered) {
+    const stepCommand = await db<StepCommand>('step_command')
+      .first()
+      .where('stepId', step.id);
+    scriptFileData += stepCommand?.command + '\n';
   }
+
+  const scriptFileName = `${deploy?.workingDirectory}/.build_script.sh`;
+  if (fs.existsSync(scriptFileName)){
+    fs.unlinkSync(scriptFileName);
+  }
+  fs.writeFileSync(scriptFileName, scriptFileData, { mode: 0o777 });
+
+  await exec(scriptFileName, { cwd: deploy?.workingDirectory }, (error, stdout, stderr) =>
+    onStepFinishHandler(error, stdout, stderr, buildId)
+  );
 };
 
 export const runFirstBuild = async (deployId: number, username: string) => {
