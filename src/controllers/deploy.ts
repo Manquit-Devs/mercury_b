@@ -206,29 +206,29 @@ export default class DeployController {
     res.status(200).send();
     const trxProvider = await db.transactionProvider();
     const trx = await trxProvider();
-    const { id } = req.params;
-    const { commits } = req.body;
-    const build: DeployBuild = {
-      commit: commits[0].id,
-      sender: commits[0].author.name,
-      date: new Date(),
-      deployId: Number(id),
-      statusId: 2,
-    };
     try {
-      const [buildId] = await trx('deploy_build').insert(build);
-      try {
-        runSteps(Number(id));
-        await trx('deploy_build').update({ statusId: 3 }).where('id', buildId);
-      } catch (error) {
-        await trx('deploy_build').update({ statusId: 4 }).where('id', buildId);
-        console.log(error);
-      } finally {
+      const { id } = req.params;
+      const { commits, sender, ref } = req.body;
+
+      const branchRef = ref.split('/')[2];
+
+      const deploy = (await trx<Deploy>('deploy').select().where('id', id))[0];
+      if (deploy.branch === branchRef) {
+        const build: DeployBuild = {
+          commit: commits[0].id,
+          sender: sender.login,
+          date: new Date(),
+          deployId: Number(id),
+          statusId: 2,
+        };
+        const [buildId] = await trx('deploy_build').insert(build);
         await trx.commit();
+        runSteps(Number(id), buildId);
       }
     } catch (error) {
-      await trx.rollback();
       console.log(error);
+
+      await trx.rollback();
     }
   }
 }
